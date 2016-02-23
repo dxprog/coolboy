@@ -1,1 +1,3 @@
 roms/
+dist/
+node_modules/
