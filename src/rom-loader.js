@@ -57,7 +57,7 @@ Rom.prototype = {
       throw 'Invalid ROM checksum';
     }
     
-    this._jumpVector = this.readUint16(JUMP_VECTOR);
+    this._startVector = this.readUint16(JUMP_VECTOR);
     this._title = this._readTitle();
   },
   
@@ -65,26 +65,39 @@ Rom.prototype = {
    * Reads and returns a single byte at the passed address. Will roll over addresses larger than 16-bits
    */
   readUint8(addr) {
+    this._verifyRom();
+    
     // Clamp the address to 16-bits
     addr &= 0xffff;
-    if (this._rom) {
-      return this._rom[addr];
-    } else {
-      throw 'No ROM is loaded';
-    }
+    return this._rom[addr];
   },
   
   /**
    * Reads and returns a 16-bit number at the passed address. Will roll over addresses larger than 16-bits
    */
   readUint16(addr) {
+    this._verifyRom();
+    
     // Clamp the address to 16-bits
     addr &= 0xffff;
-    if (this._rom) {
-      const lsb = this._rom[addr];
-      const msb = this._rom[addr + 1];
-      return lsb | (msb << 0x8);
-    } else {
+    const lsb = this._rom[addr];
+    const msb = this._rom[addr + 1];
+    return lsb | (msb << 0x8);
+  },
+  
+  /**
+   * Returns the start vector address
+   */
+  getStartVector() {
+    this._verifyRom();
+    return this._startVector;
+  },
+  
+  /**
+   * Throws an error if no ROM is loaded
+   */
+  _verifyRom() {
+    if (!this._rom) {
       throw 'No ROM is loaded';
     }
   },

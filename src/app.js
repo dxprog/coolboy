@@ -1,6 +1,11 @@
 import RomLoader from './rom-loader';
+import Z80 from './z80cpu';
 
-let romLoader = new RomLoader();
+const romLoader = new RomLoader();
 romLoader.load('tetris').then(() => {
-  console.log('loaded successfully');
+  const cpu = new Z80(romLoader, null);
+  cpu.begin();
+  while (true) {
+    cpu.tick();
+  }
 });
