@@ -312,6 +312,22 @@ Cpu.prototype = {
     this.op2b(); // DEC hl
   },
 
+  // LD (x), a
+  ope0() {
+    const addr = this._readOp();
+    this._log(`ld (${addr.toString(16)}), a`);
+    this._writeMem(0xff00 | addr, this[REG_A]);
+    this._cycles += 11;
+  },
+
+  // LD a, (x)
+  opf0() {
+    const addr = this._readOp();
+    this._log(`ld a, (${addr.toString(16)})`);
+    this[REG_A] = this._readMem(0xff00 | addr);
+    this._cycles += 11;
+  },
+
   /**
    * DEC
    */
@@ -424,12 +440,6 @@ Cpu.prototype = {
     if (cond) {
       this._pc = this._pop();
     }
-  },
-
-  // RET p
-  opf0() {
-    this._log('ret p');
-    this._ret(!this._getFlag(FLAG_N));
   },
 
   // RET nz
