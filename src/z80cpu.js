@@ -55,7 +55,7 @@ Cpu.prototype = {
   
   tick() {
     if (this._cycles <= 0) {
-      console.log(':' + this._pc.toString(16));
+      this._currentAddr = this._pc.toString(16);
       const opCode = this._readOp().toString(16);
       // This check can be thrown away once implementation is complete
       if (this[`op${opCode}`]) {
@@ -66,6 +66,11 @@ Cpu.prototype = {
     } else {
       this._cycles--;
     }
+  },
+  
+  _log(text) {
+    const addr = '0'.repeat(4 - this._currentAddr.length) + this._currentAddr; 
+    console.log(`${addr}: ${text}`);
   },
   
   /**
@@ -153,7 +158,7 @@ Cpu.prototype = {
   
   // NOP
   op0() {
-    console.log('nop');
+    this._log('nop');
     this._cycles += 4;
   },
   
@@ -167,7 +172,7 @@ Cpu.prototype = {
    * JP
    */
   _jp(addr) {
-    console.log(`jp ${addr.toString(16)}`);
+    this._log(`jp ${addr.toString(16)}`);
     this._pc = addr;
     this._cycles += 10;
   },
@@ -181,7 +186,7 @@ Cpu.prototype = {
    * XOR
    */
   _xor(value) {
-    console.log(`xor 0x${value.toString(16)}`);
+    this._log(`xor 0x${value.toString(16)}`);
     this[REG_A] = this[REG_A] ^ value;
     this._cycles += 4;
     this._setFlags(this[REG_A]);
@@ -197,7 +202,7 @@ Cpu.prototype = {
   
   // Loads a value into a register
   _ldReg8(reg, value) {
-    console.log(`ld ${reg}, 0x${value.toString(16)}`);
+    this._log(`ld ${reg}, 0x${value.toString(16)}`);
     this[reg] = value;
     this._cycles += 4;
     this._setFlags(value);
@@ -205,7 +210,7 @@ Cpu.prototype = {
   
   // Loads the value of one register into another
   _ldRegWithReg(regTo, regFrom) {
-    console.log(`ld ${regTo}, ${regFrom}`);
+    this._log(`ld ${regTo}, ${regFrom}`);
     this[regTo] = this[regFrom];
     this._cycles += 4;
   },
@@ -213,7 +218,7 @@ Cpu.prototype = {
   // Loads the value of the accumulator into the memory address
   // of a 16-bit register combo
   _ldIndirectA(reg1, reg2) {
-    console.log(`ld (${reg1}${reg2}), a`);
+    this._log(`ld (${reg1}${reg2}), a`);
     const addr = (this[reg1] << 0x8) | this[reg2];
     this._writeMem(addr, this[REG_A]);
     this._cycles += 8;
@@ -223,7 +228,7 @@ Cpu.prototype = {
   op21() {
     this[REG_L] = this._readOp();
     this[REG_H] = this._readOp();
-    console.log(`ld hl, 0x${((this[REG_H] << 8) | this[REG_L]).toString(16)}`);
+    this._log(`ld hl, 0x${((this[REG_H] << 8) | this[REG_L]).toString(16)}`);
     this._cycles += 10;
   },
   
@@ -300,7 +305,7 @@ Cpu.prototype = {
   // LD (HLD),a
   // This is custom to the GameBoy. Writes A into (HL) and then decrements HL
   op32() {
-    console.log('ld (hld), a');
+    this._log('ld (hld), a');
     const addr = (this[REG_H] << 0x8) | this[REG_L];
     this._writeMem(addr, this[REG_A]);
     this._cycles += 13;
@@ -311,7 +316,7 @@ Cpu.prototype = {
    * DEC
    */
   _decReg8(reg) {
-    console.log(`dec ${reg}`);
+    this._log(`dec ${reg}`);
     this[reg] = (this[reg] - 1) & BYTE_CLAMP;
     this._cycles += 4;
     this._setFlags(this[reg]);
@@ -320,7 +325,7 @@ Cpu.prototype = {
   
   // Helper function because fake 16-bit registers are dumb
   _decReg16(reg1, reg2) {
-    console.log(`dec ${reg1}${reg2}`);
+    this._log(`dec ${reg1}${reg2}`);
     let value = (this[reg1] << 0x8) | this[reg2];
     value = (value - 1) & WORD_CLAMP;
     this[reg1] = value >> 0x8;
@@ -350,7 +355,7 @@ Cpu.prototype = {
   _jr(cond, addr) {
     if (cond) {
       // Calculate up the direction
-      addr = !!(addr & 0x80) ? -(addr & 0x7f) : addr & 0x7f;
+      addr = !!(addr & 0x80) ? -((~addr & BYTE_CLAMP) + 1) : addr & 0x7f;
       this._pc = (this._pc + addr) & 0xffff;
       this._cycles += 5;
     }
@@ -360,7 +365,7 @@ Cpu.prototype = {
   // JR NZ,x
   op20() {
     const op = this._readOp();
-    console.log(`jp nz, 0x${op.toString(16)}`);
+    this._log(`jp nz, 0x${op.toString(16)}`);
     this._jr(!this._getFlag(FLAG_Z), op);
   },
   
@@ -368,13 +373,13 @@ Cpu.prototype = {
    * Interrupts
    */
   opf3() {
-    console.log('disable interrupts');
+    this._log('disable interrupts');
     this._di = true;
     this.op0();
   },
   
   opfb() {
-    console.log('enable interrupts');
+    this._log('enable interrupts');
     this._di = false;
   },
   
@@ -393,7 +398,7 @@ Cpu.prototype = {
   _pop() {
     const msb = this._readMem(++this._sp);
     const addr = (msb << 0x8) | this._readMem(++this._sp);
-    console.log('pop', addr.toString(16));
+    this._log('pop', addr.toString(16));
     return addr;
   },
   
@@ -401,7 +406,7 @@ Cpu.prototype = {
    * CALL
    */
   _call(addr) {
-    console.log(`call 0x${addr.toString(16)}`);
+    this._log(`call 0x${addr.toString(16)}`);
     this._push(this._pc);
     this._pc = addr;
     this._cycles += 6;
@@ -423,18 +428,18 @@ Cpu.prototype = {
   
   // RET p
   opf0() {
-    console.log('ret p');
+    this._log('ret p');
     this._ret(!this._getFlag(FLAG_N));
   },
   
   // RET nz
   opc0() {
-    console.log('ret nz');
+    this._log('ret nz');
     this._ret(!this._getFlag(FLAG_Z));
   },
   
   opc8() {
-    console.log('ret z');
+    this._log('ret z');
     this._ret(!!this._getFlag(FLAG_Z));
   },
   
@@ -445,7 +450,7 @@ Cpu.prototype = {
   // CP x
   opfe() {
     const op = this._readOp();
-    console.log(`cp 0x${op.toString(16)}`);
+    this._log(`cp 0x${op.toString(16)}`);
     const value = this[REG_A] - op;
     this._setFlags(value);
     this._cycles += 7;
@@ -455,7 +460,7 @@ Cpu.prototype = {
    * AND
    */
   _and(value) {
-    console.log(`and ${value.toString(16)}`);
+    this._log(`and ${value.toString(16)}`);
     this[REG_A] &= value;
     this._setFlags(this[REG_A]);
     this._setFlag(FLAG_N, false);
