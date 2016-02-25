@@ -54,7 +54,7 @@ Cpu.prototype = {
   },
   
   tick() {
-    if (this._cycles) {
+    if (this._cycles <= 0) {
       console.log(':' + this._pc.toString(16));
       const opCode = this._readOp().toString(16);
       // This check can be thrown away once implementation is complete
